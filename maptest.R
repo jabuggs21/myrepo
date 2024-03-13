@@ -57,6 +57,7 @@ ggplot(data = world)+
   coord_sf(xlim = c(-102.15, -74.12), ylim = c(7.65, 33.97), expand = FALSE)
 
 #final map
+<<<<<<< HEAD
 ggplot(data = world) + geom_sf(fill = "antiquewhite")+ 
   geom_text(data = world_points,aes(x=X, y=Y, label=name), color = "darkblue",
             fontface = "bold", check_overlap = FALSE)+
@@ -72,6 +73,13 @@ color = "grey22", size = 6) + annotation_scale(location = "bl", width_hint = 0.5
 #saving
 ggsave("mapone.pdf")
 ggsave("mapone_web.png", width = 6, height = 6, dpi = "screen")
+
+
+
+
+
+
+>>>>>>> 7933c3db7421068aa13e216eed81afc157cd9251
 
 
 
