@@ -57,7 +57,6 @@ ggplot(data = world)+
   coord_sf(xlim = c(-102.15, -74.12), ylim = c(7.65, 33.97), expand = FALSE)
 
 #final map
-<<<<<<< HEAD
 ggplot(data = world) + geom_sf(fill = "antiquewhite")+ 
   geom_text(data = world_points,aes(x=X, y=Y, label=name), color = "darkblue",
             fontface = "bold", check_overlap = FALSE)+
@@ -77,9 +76,38 @@ ggsave("mapone_web.png", width = 6, height = 6, dpi = "screen")
 
 
 
+###Part 2: Layers
+##Define two study sites in a dataframe
+(sites <- data.frame(longitude = c(-80.144005, -80.109), latitude = c(26.479005, 26.83)))
 
+#add pt coordinates with geom_point and define aesthetics
+ggplot(data = world)+geom_sf()+geom_point(data = sites, aes(x=longitude, y=latitude),
+                                          size = 4, shape = 23, fill = "purple")+
+  coord_sf(xlim = c(-88, -78), ylim = c(24.5, 33), expand = FALSE)
 
->>>>>>> 7933c3db7421068aa13e216eed81afc157cd9251
+#convert dataframe to sf object to overcome coordinate system when two objects aren't in same projection
+#WGS84 CRS code #4326 projection must be defined in sf object
+(sites <- st_as_sf(sites, coords = c("longitude", "latitude"), 
+                   crs = 4326, agr = "constant"))
+ggplot(data = world) +
+  geom_sf() +
+  geom_sf(data = sites, size = 4, shape = 23, fill = "darkred") +
+  coord_sf(xlim = c(-88, -78), ylim = c(24.5, 33), expand = FALSE)
 
+#adding states/polygon data
+install.packages("maps")
+library("maps")
+states <- st_as_sf(map("states", plot = FALSE, fill = TRUE))
+head(states)
 
+#add state names by centroid of each state polygon (not long/lat exact)
+states <- cbind(states, st_coordinates(st_centroid(states)))
+
+#capitalize state names
+library("tools")
+states$ID <- toTitleCase(states$ID)
+head(states)
+ggplot(data = world)+geom_sf()+geom_sf(data = states, fill = NA)+
+  geom_text(data = states, aes(x, y, label = ID), size = 5)+
+  coord_sf(xlim = c(-88, -78), ylim = c(24.5, 33), expand = FALSE)
 
