@@ -188,3 +188,187 @@ ggplot(data = world)+
 #saving
 ggsave("maptwo.pdf")
 ggsave("maptwo_web.png", width = 6, height = 6, dpi = "screen")
+
+
+
+
+###Part 3:Layouts
+#how to combine submaps? grobs from ggplot2 w/ coordinates OR ggdraw from cowplot w/ relative position
+#create sample graph
+(g1 <- qplot(0:10, 0:10))
+(g1_void <- g1 +theme_void()+theme(panel.border = element_rect(colour = "black",
+                                                               fill = NA)))
+
+#arrange graphs as grobs (graphic objects) in ggplot
+#plot two instances of g1_void on g1 in upleft and bottomright corners of plot
+#defined by x and y min/max
+g1 + annotation_custom(grob = ggplotGrob(g1_void),
+                       xmin = 0,
+                       xmax = 3,
+                       ymin = 5,
+                       ymax = 10)+
+  annotation_custom(grob = ggplotGrob(g1_void),
+                    xmin = 5,
+                    xmax = 10,
+                    ymin = 0,
+                    ymax = 3)
+
+#alternatively, use cowplot to do the same thing
+library("cowplot")
+ggdraw(g1)+draw_plot(g1_void, width = 0.25, height = 0.5, x = 0.02, y = 0.48)+
+  draw_plot(g1_void, width = 0.5, height = 0.25, x = 0.75, y = 0.09)
+
+#several maps side by side or on grid
+#prep subplots
+#1: world map
+(gworld <- ggplot(data=world)+ 
+    geom_sf(aes(fill = region_wb))+
+    geom_rect(xmin = -102.15, xmax = -74.12, ymin = 7.65, ymax = 33.97,
+              fill = NA, colour = "black", linewidth = 1.5)+
+    scale_fill_viridis_d(option = "plasma")+
+    theme(panel.background = element_rect(fill = "azure"),
+          panel.border = element_rect(fill = NA)))
+#2: gulf of mexico
+(ggulf <- ggplot(data = world) +
+    geom_sf(aes(fill = region_wb)) +
+    annotate(geom = "text", x = -90, y = 26, label = "Gulf of Mexico", 
+             fontface = "italic", color = "grey22", size = 6) +
+    coord_sf(xlim = c(-102.15, -74.12), ylim = c(7.65, 33.97), expand = FALSE) +
+    scale_fill_viridis_d(option = "plasma") +
+    theme(legend.position = "none", axis.title.x = element_blank(), 
+          axis.title.y = element_blank(), panel.background = element_rect(fill = "azure"), 
+          panel.border = element_rect(fill = NA)))
+
+#arrange the maps
+#method 1
+ggplot()+
+  coord_equal(xlim = c(0, 3.3), ylim = c(0, 1), expand = FALSE)+
+  annotation_custom(ggplotGrob(ggulf), xmin = 0, xmax = 1.5, ymin=0, ymax = 1)+
+  annotation_custom(ggplotGrob(gworld), xmin = 1.5, xmax= 3, ymin=0, ymax = 1)+
+  theme_void()
+#method 2
+plot_grid(gworld, ggulf, nrow=1, rel_widths = c(2.3,1))
+
+#saving
+ggsave("gridmap.pdf", width = 15, height = 5)
+
+#map insets
+#prep continental states
+usa <- subset(world, admin == "United States of America")
+(mainland <- ggplot(data = usa)+
+    geom_sf(fill = "cornsilk")+
+    coord_sf(crs = st_crs(9311), xlim=c(-2500000, 2500000), ylim = c(-2300000, 730000)))
+
+(alaska <- ggplot(data = usa)+
+    geom_sf(fill = "cornsilk")+
+    coord_sf(crs = st_crs(3467), xlim = c(-2400000, 1600000), ylim = c(200000, 2500000),
+             expand = FALSE, datum = NA))
+
+(hawaii <- ggplot(data = usa)+
+    geom_sf(fill = "cornsilk")+
+    coord_sf(crs = st_crs(4135), xlim = c(-161, -154), ylim = c(18, 23), expand = FALSE, datum = NA))
+
+mainland + annotation_custom(
+  grob = ggplotGrob(alaska),
+  xmin = -2750000,
+  xmax = -2750000 + (1600000 - (-2400000))/2.5,
+  ymin = -2450000,
+  ymax = -2450000 + (2500000 - 200000)/2.5
+) +
+  annotation_custom(
+    grob = ggplotGrob(hawaii),
+    xmin = -1250000,
+    xmax = -1250000 + (-154 - (-161))*120000,
+    ymin = -2450000,
+    ymax = -2450000 + (23 - 18)*120000
+  )
+
+(ratioAlaska <- (2500000 - 200000) / (1600000 - (-2400000)))
+
+## [1] 0.575
+
+(ratioHawaii  <- (23 - 18) / (-154 - (-161)))
+
+## [1] 0.7142857
+
+#put maps together
+ggdraw(mainland) +
+  draw_plot(alaska, width = 0.26, height = 0.26 * 10/6 * ratioAlaska, 
+            x = 0.05, y = 0.05) +
+  draw_plot(hawaii, width = 0.15, height = 0.15 * 10/6 * ratioHawaii, 
+            x = 0.3, y = 0.05)
+
+#saving
+ggsave("map-us-ggdraw.pdf", width = 10, height = 6)
+
+
+#florida maps
+sites <- st_as_sf(data.frame(longitude = c(-80.15, -80.1), latitude = c(26.5, 
+                                                                        26.8)), coords = c("longitude", "latitude"), crs = 4326, 
+                  agr = "constant")
+
+
+(florida <- ggplot(data = world) +
+    geom_sf(fill = "antiquewhite1") +
+    geom_sf(data = sites, size = 4, shape = 23, fill = "darkred") +
+    annotate(geom = "text", x = -85.5, y = 27.5, label = "Gulf of Mexico", 
+             color = "grey22", size = 4.5) +
+    coord_sf(xlim = c(-87.35, -79.5), ylim = c(24.1, 30.8)) +
+    xlab("Longitude")+ ylab("Latitude")+
+    theme(panel.grid.major = element_line(colour = gray(0.5), linetype = "dashed", 
+                                          size = 0.5), panel.background = element_rect(fill = "aliceblue"), 
+          panel.border = element_rect(fill = NA)))
+
+#prepare sites
+(siteA <- ggplot(data = world) +
+    geom_sf(fill = "antiquewhite1") +
+    geom_sf(data = sites, size = 4, shape = 23, fill = "darkred") +
+    coord_sf(xlim = c(-80.25, -79.95), ylim = c(26.65, 26.95), expand = FALSE) + 
+    annotate("text", x = -80.18, y = 26.92, label= "Site A", size = 6) + 
+    theme_void() + 
+    theme(panel.grid.major = element_line(colour = gray(0.5), linetype = "dashed", 
+                                          size = 0.5), panel.background = element_rect(fill = "aliceblue"), 
+          panel.border = element_rect(fill = NA)))
+
+(siteB <- ggplot(data = world) + 
+    geom_sf(fill = "antiquewhite1") +
+    geom_sf(data = sites, size = 4, shape = 23, fill = "darkred") +
+    coord_sf(xlim = c(-80.3, -80), ylim = c(26.35, 26.65), expand = FALSE) +
+    annotate("text", x = -80.23, y = 26.62, label= "Site B", size = 6) + 
+    theme_void() +
+    theme(panel.grid.major = element_line(colour = gray(0.5), linetype = "dashed", 
+                                          size = 0.5), panel.background = element_rect(fill = "aliceblue"), 
+          panel.border = element_rect(fill = NA)))
+
+arrowA <- data.frame(x1 = 18.5, x2 = 23, y1 = 9.5, y2 = 14.5)
+arrowB <- data.frame(x1 = 18.5, x2 = 23, y1 = 8.5, y2 = 6.5)
+
+#put them together with ggplot
+ggplot() +
+  coord_equal(xlim = c(0, 28), ylim = c(0, 20), expand = FALSE) +
+  annotation_custom(ggplotGrob(florida), xmin = 0, xmax = 20, ymin = 0, 
+                    ymax = 20) +
+  annotation_custom(ggplotGrob(siteA), xmin = 20, xmax = 28, ymin = 11.25, 
+                    ymax = 19) +
+  annotation_custom(ggplotGrob(siteB), xmin = 20, xmax = 28, ymin = 2.5, 
+                    ymax = 10.25) +
+  geom_segment(aes(x = x1, y = y1, xend = x2, yend = y2), data = arrowA, 
+               arrow = arrow(), lineend = "round") +
+  geom_segment(aes(x = x1, y = y1, xend = x2, yend = y2), data = arrowB, 
+               arrow = arrow(), lineend = "round") +
+  theme_void()
+
+#put them together with cowplot
+ggdraw(xlim = c(0, 28), ylim = c(0, 20)) +
+  draw_plot(florida, x = 0, y = 0, width = 20, height = 20) +
+  draw_plot(siteA, x = 20, y = 11.25, width = 8, height = 8) +
+  draw_plot(siteB, x = 20, y = 2.5, width = 8, height = 8) +
+  geom_segment(aes(x = x1, y = y1, xend = x2, yend = y2), data = arrowA, 
+               arrow = arrow(), lineend = "round") +
+  geom_segment(aes(x = x1, y = y1, xend = x2, yend = y2), data = arrowB, 
+               arrow = arrow(), lineend = "round")
+
+#save
+ggsave("florida-sites.pdf", width = 10, height = 7)
+
+
